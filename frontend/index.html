@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" type="text/css">
+  <link rel="stylesheet" href="https://static.pingendo.com/bootstrap/bootstrap-4.3.1.css">
+  <title>CourseWork 1</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+    .item {
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px;
+    }
+    input[type="text"] {
+      width: 100%; 
+      height: 40px; 
+      font-size: 16px; 
+      padding: 8px; 
+      border: 1px solid #ccc; 
+      border-radius: 5px; 
+      box-sizing: border-box; 
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" class="container">
+    <input type="text" v-model="searchQuery" @input="searchLessons" placeholder="Search lessons by subject, title, or location">  
+      <div v-if="lessons.length === 0">
+      <p>No lessons available.</p>
+    </div>
+    <div v-else>
+      <div v-for="lesson in filteredLessons" :key="lesson._id" class="item">      
+          <h3>{{ lesson.subject }}</h3>
+        <p>Price: ${{ lesson.price }}</p>
+        <p>Location: {{ lesson.location }}</p>
+        <p>Spaces Available: {{ lesson.space }}</p>
+        <button  @click="addToCart(lesson)" :disabled="lesson.space <= 0">Add to Cart <i class="fa fa-shopping-cart" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <h2>Shopping Cart</h2>
+    <div v-if="cart.length === 0">
+      <p>Your cart is empty.</p>
+    </div>
+    <div v-else>
+      <div v-for="(item, index) in cart" :key="index" class="cart-item">
+        <p>{{ item.subject }} - ${{ item.price }}</p>
+        <button @click="removeFromCart(index)">Remove</button>
+      </div>
+      <button @click="checkout">Checkout</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        lessons: [],
+        cart: [],
+        searchQuery: ''
+      },
+      created() {
+        console.log('Fetching lessons...');
+        this.fetchLessons();
+      },
+      computed: {
+        filteredLessons() {
+          return this.lessons.filter(lesson =>
+            lesson.subject.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+            lesson.location.toLowerCase().includes(this.searchQuery.toLowerCase())
+          );
+        }
+      },
+        methods: {
+
+        fetchLessons() {
+          fetch('http://localhost:3005/api/getAllLessons')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('Lessons fetched successfully:', data);
+            if (data.success) {
+              this.lessons = data.lesson;
+            } else {
+              console.error('Failed to fetch lessons:', data.error);
+            }
+          })
+          .catch(error => console.error('Error fetching lessons:', error));
+        },        addToCart(lesson) {
+          lesson.space -= 1;
+          this.cart.push(lesson);
+          alert('Item added to cart.');
+        },
+        removeFromCart(index) {
+          this.cart[index].space += 1;
+          this.cart.splice(index, 1);
+          alert('Item removed from cart.');
+        },      
+        checkout() {
+          const name = prompt('Enter your name:');
+          const phone = prompt('Enter your phone number:');
+          if (name && phone) {
+            const order = {
+            name: name,
+            phoneNumber: phone,
+          };    
+          fetch('http://localhost:3005/api/createNewOrder', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(order)
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log('New order created:', data);
+            alert('YOUR ORDER HAS BEEN PLACED SUCCESSFULLY');
+            this.cart = [];
+          })
+          .catch(error => console.error('Error creating new order:', error));
+        } else {
+            alert('Please enter name and phone number.');
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
